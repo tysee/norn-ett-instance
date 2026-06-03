@@ -1,0 +1,7 @@
+name: norn_ett
+version: "1.0.0"
+profile: norn_ett
+model-paths: ["models"]
+models:
+  norn_ett:
+    +materialized: view

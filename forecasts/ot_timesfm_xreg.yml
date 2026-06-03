@@ -1,0 +1,16 @@
+metric: ot
+source: fct_ot
+grain: hourly
+dimensions: [dataset, feature]
+horizon: 24
+context_length: 512
+seasonality: 24
+model: timesfm-2.5
+transform: none
+schedule: "0 6 * * *"   # ETT is a static historical dataset; schedule is a hint only
+# Auto-attaches the confirmed source_leads from each dependency_explanation as
+# TimesFM XReg covariates. Requires `norn deps forecasts/deps/*.yml` to have run
+# first (so the leading load features are discovered + confirmed). Set
+# NORN_FORECAST_COVARIATES__HORIZON_POLICY=ffill — under the strict default, lead
+# lags < horizon (24h) would be dropped and the covariate left unused.
+use_dependencies: true

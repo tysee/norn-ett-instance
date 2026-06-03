@@ -1,0 +1,8 @@
+version: 2
+sources:
+  - name: ett
+    schema: norn_ett
+    tables:
+      - name: raw_ett
+      - name: forecast_point
+      - name: forecast_segment

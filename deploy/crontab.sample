@@ -1,0 +1,17 @@
+# norn-ett pipeline (run on the capable host; TimesFM worker must be up).
+# NOTE: ETT is a static historical dataset — once backfilled it never changes,
+# so this cron is mostly illustrative. It mirrors the crypto pipeline shape so
+# the same orchestration applies if the source ever became live.
+# 06:05 ingest, 06:10 build marts, 06:15 forecast + calibrate, 06:20 refresh Lightdash.
+5 6 * * *  cd /path/to/norn-ett-instance && uv run ett update
+10 6 * * * cd /path/to/norn-ett-instance && CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profiles-dir dbt
+15 6 * * * cd /path/to/norn && uv run norn forecast /path/to/norn-ett-instance/forecasts/ot_timesfm.yml && uv run norn calibrate /path/to/norn-ett-instance/forecasts/ot_timesfm.yml
+# Re-push the compiled dbt project to Lightdash so explores/dashboards pick up
+# the fresh marts. Project uses a CLI ("none") dbt connection, so `lightdash
+# deploy` (not `refresh`, which needs a git connection) is the right command.
+# Reads the warehouse connection from profiles.yml; auth via env vars below.
+# Put LIGHTDASH_URL + LIGHTDASH_API_KEY (a Lightdash personal access token) in
+# ~/.norn-lightdash.env, e.g.:
+#     LIGHTDASH_URL=http://localhost:8080
+#     LIGHTDASH_API_KEY=ldpat_xxx
+20 6 * * * cd /path/to/norn-ett-instance && set -a && . "$HOME/.norn-lightdash.env" && set +a && CH_HOST=localhost CI=true uv run --with 'dbt-clickhouse' npx --yes @lightdash/cli deploy --project-dir dbt --profiles-dir dbt

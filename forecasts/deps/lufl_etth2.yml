@@ -1,0 +1,6 @@
+# LUFL load feature -> oil temperature (OT) lead/lag candidate (ETTh2)
+source_segment: dataset=ETTh2|feature=lufl
+target_segment: dataset=ETTh2|feature=ot
+metric: reading
+mart: mart_metric
+max_lag: 48
