@@ -8,5 +8,7 @@ norn_ett:
       port: 8123
       user: norn
       password: norn
-      schema: norn_ett
+      # CH_SCHEMA lets tests build into an isolated DB (e.g. norn_ett_test)
+      # instead of the live norn_ett — see tests/test_dbt_models.py.
+      schema: "{{ env_var('CH_SCHEMA', 'norn_ett') }}"
       secure: false

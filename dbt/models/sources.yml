@@ -1,8 +1,11 @@
 version: 2
 sources:
   - name: ett
-    schema: norn_ett
+    # CH_SCHEMA lets tests read from an isolated DB (e.g. norn_ett_test) — see tests.
+    schema: "{{ env_var('CH_SCHEMA', 'norn_ett') }}"
     tables:
       - name: raw_ett
       - name: forecast_point
       - name: forecast_segment
+      - name: dependency_explanation
+      - name: metric_dependency
