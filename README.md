@@ -14,7 +14,7 @@ CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profi
 
 ## End-to-end (manual integration)
 Requires the norn platform + a running TimesFM worker for the `timesfm-2.5` jobs:
-`docker compose --profile timesfm up -d timesfm` from norn's `deploy/` (HF weights
+`docker compose -f docker-compose.services.yml --profile timesfm up -d timesfm` from norn's `deploy/` (HF weights
 cache in a named volume; set `HF_TOKEN` in `deploy/.env` for faster downloads).
 1. `uv run ett backfill` → `raw_ett` filled (all 4 datasets).
 2. `CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profiles-dir dbt` → `mart_metric` + `fct_ot`.
