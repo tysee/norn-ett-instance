@@ -13,6 +13,10 @@ jobs:
     action: calibrate
     job: /jobs/forecasts/ot_timesfm.yml
     schedule: "45 6 * * *"
+  - name: ot-baseline-calibrate
+    action: calibrate
+    job: /jobs/forecasts/ot_baseline.yml
+    schedule: "50 6 * * *"                   # baseline-калибровка дешёвая (без timesfm-воркера)
   - name: deps-hufl-etth1
     action: deps
     job: /jobs/forecasts/deps/hufl_etth1.yml
