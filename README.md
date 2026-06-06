@@ -13,8 +13,9 @@ CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profi
 ```
 
 ## End-to-end (manual integration)
-Requires the norn platform + a running TimesFM worker (`deploy/timesfm.Dockerfile`,
-`NORN_TIMESFM_URL`) for the `timesfm-2.5` jobs.
+Requires the norn platform + a running TimesFM worker for the `timesfm-2.5` jobs:
+`docker compose -f docker-compose.services.yml --profile timesfm up -d timesfm` from norn's `deploy/` (HF weights
+cache in a named volume; set `HF_TOKEN` in `deploy/.env` for faster downloads).
 1. `uv run ett backfill` → `raw_ett` filled (all 4 datasets).
 2. `CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profiles-dir dbt` → `mart_metric` + `fct_ot`.
 3. From norn: `uv run norn forecast .../forecasts/ot_baseline.yml` (or `ot_timesfm.yml`) → `forecast_point` filled.
@@ -22,6 +23,13 @@ Requires the norn platform + a running TimesFM worker (`deploy/timesfm.Dockerfil
 5. `NORN_FORECAST_COVARIATES__HORIZON_POLICY=ffill uv run norn forecast .../forecasts/ot_timesfm_xreg.yml` → re-forecasts OT with the confirmed leads as XReg covariates.
 6. `uv run norn calibrate .../forecasts/ot_timesfm.yml` → `forecast_segment`.
 7. MCP `get_forecast(metric="ot", segment="dataset=ETTh1|feature=ot")` returns rows; Lightdash shows actual-vs-forecast.
+
+The result in Lightdash — two weeks of actual oil temperature, then the forecast
+median with the p10–p90 band (the actual line ends at the forecast boundary):
+
+![OT actual vs forecast — ETTh1](docs/assets/ot-actual-vs-forecast-etth1.png)
+
+![OT actual vs forecast — ETTh2](docs/assets/ot-actual-vs-forecast-etth2.png)
 
 If the TimesFM worker is unreachable, the `timesfm-2.5` jobs **fail explicitly** (they record a
 `forecast_run` row with `status=failed` and raise a clear error — there is no silent fallback).

@@ -1,5 +1,6 @@
 from typer.testing import CliRunner
 
+from conftest import DSN
 from norn_ett.cli import app
 
 runner = CliRunner()
@@ -23,7 +24,7 @@ def test_backfill_command(ch, monkeypatch):
         ghmod, "_http_client",
         lambda: httpx.Client(transport=httpx.MockTransport(handler)),
     )
-    monkeypatch.setenv("NORN_CLICKHOUSE_URL", "http://norn:norn@localhost:8123/norn_ett")
+    monkeypatch.setenv("NORN_CLICKHOUSE_URL", DSN)  # same DB as the ch fixture, never a hardcoded live DB
 
     result = runner.invoke(app, ["backfill", "--datasets", "ETTh1"])
     assert result.exit_code == 0, result.output

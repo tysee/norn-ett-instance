@@ -1,15 +1,15 @@
 """
 src/norn_ett/ingest.py
 
-Логика инжеста: запись наблюдений в raw_ett, полный backfill (загрузка всех
-датасетов целиком) и инкрементальное обновление с последней ts.
+Ingestion logic: write observations to raw_ett, full backfill (load all
+datasets in their entirety) and incremental update from the latest ts.
 
-Методы:
-- write_rows(client, rows) -> int — вставка строк наблюдений.
-- max_ts(client, dataset) -> datetime — последняя ts в CH, tz-aware UTC
+Functions:
+- write_rows(client, rows) -> int — insert observation rows.
+- max_ts(client, dataset) -> datetime — latest ts in CH, tz-aware UTC
   (sentinel 1970-01-01 UTC).
-- do_backfill(client, datasets) -> int — полная загрузка датасетов.
-- do_update(client, datasets) -> int — добор строк новее max_ts.
+- do_backfill(client, datasets) -> int — full dataset load.
+- do_update(client, datasets) -> int — append rows newer than max_ts.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def max_ts(client, dataset: str) -> datetime:
     ts = res[0][0]
     if ts is None:
         return datetime(1970, 1, 1, tzinfo=timezone.utc)
-    # CH отдаёт наивный UTC — пометить явно, чтобы сравнение с tz-aware ts работало.
+    # CH returns a naive UTC datetime — mark it explicitly so comparison with tz-aware ts works.
     return ts.replace(tzinfo=timezone.utc)
 
 

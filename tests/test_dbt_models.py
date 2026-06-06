@@ -15,9 +15,12 @@ def _seed(ch):
     )
 
 
-def _dbt(cmd):
+def _dbt(cmd, *args):
+    # --select limits the build to raw_ett-backed marts: the contract-table views
+    # (calibration/actual_vs_forecast/...) reference platform tables that do not
+    # exist in the isolated test DB (they are created by the norn platform).
     return subprocess.run(
-        ["uv", "run", "--with", "dbt-clickhouse", "dbt", cmd,
+        ["uv", "run", "--with", "dbt-clickhouse", "dbt", cmd, *args,
          "--project-dir", "dbt", "--profiles-dir", "dbt"],
         capture_output=True, text=True, env={**_env()},
     )
@@ -25,12 +28,20 @@ def _dbt(cmd):
 
 def _env():
     import os
-    return {**os.environ, "CH_HOST": "localhost"}
+    from urllib.parse import urlparse
+
+    from conftest import DSN
+
+    # Build dbt models into the SAME database the test fixture seeds/queries —
+    # so pointing NORN_CLICKHOUSE_URL at an isolated DB isolates dbt too
+    # (never truncate/build over the live norn_ett by accident).
+    schema = urlparse(DSN).path.lstrip("/") or "norn_ett"
+    return {**os.environ, "CH_HOST": "localhost", "CH_SCHEMA": schema}
 
 
 def test_mart_metric_derivations(ch):
     _seed(ch)
-    r = _dbt("run")
+    r = _dbt("run", "--select", "mart_metric", "fct_ot")
     assert r.returncode == 0, r.stdout + r.stderr
 
     # metric_name is the constant 'reading'.

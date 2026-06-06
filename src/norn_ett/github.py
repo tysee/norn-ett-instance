@@ -1,14 +1,14 @@
 """
 src/norn_ett/github.py
 
-Клиент сырых CSV-датасетов ETT из репозитория ETDataset на GitHub. Без авторизации.
+Client for raw ETT CSV datasets from the ETDataset repository on GitHub. No auth required.
 
-Методы:
-- fetch_rows(dataset, client=None) -> list[dict] — загрузка {dataset}.csv,
-  разбор csv.DictReader, сортировка по возрастанию ts, типизация Float64.
+Functions:
+- fetch_rows(dataset, client=None) -> list[dict] — download {dataset}.csv,
+  parse with csv.DictReader, sort by ts ascending, cast values to Float64.
 
-Временные метки CSV наивные; трактуем их как UTC и помечаем tzinfo=UTC явно:
-clickhouse-connect сдвигает наивные datetime на смещение машины при вставке.
+CSV timestamps are naive; we treat them as UTC and explicitly set tzinfo=UTC:
+clickhouse-connect shifts naive datetimes by the machine UTC offset on insert.
 """
 from __future__ import annotations
 

@@ -1,11 +1,11 @@
 """
 src/norn_ett/cli.py
 
-CLI инстанса (typer): backfill полной истории и инкрементальный update наблюдений.
+Instance CLI (typer): full-history backfill and incremental update of observations.
 
-Команды:
-- backfill --datasets ... — полная история в raw_ett.
-- update --datasets ... — добор новых наблюдений.
+Commands:
+- backfill --datasets ... — load the full history into raw_ett.
+- update --datasets ... — append observations newer than the latest stored ts.
 """
 from __future__ import annotations
 
