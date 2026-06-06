@@ -126,10 +126,28 @@ uv run norn deps .../forecasts/deps/*.yml
   beyond OT's own history (p-value, F-statistic).
 
 The numeric evidence lands in `metric_dependency`; then the **LLM judge**
-(this run: local Ollama, `gemma4:e2b` — provider/model are instance config,
-the platform has no default) reads both methods' evidence per pair and writes
-a verdict to `dependency_explanation`: `is_real`, `confidence`, a plain-text
-explanation with caveats. Real examples from this run:
+reads both methods' evidence per pair and writes a verdict to
+`dependency_explanation`: `is_real`, `confidence`, a plain-text explanation
+with caveats.
+
+**This run used local Ollama** — no cloud account or API key involved. The
+judge ran `gemma4:e2b` against the local daemon, configured entirely in norn's
+`config/agent.yml`:
+
+```yaml
+provider: ollama                      # 1 of 5 providers: ollama | openai-api |
+model: gemma4:e2b                     #   openai-oauth | openrouter | anthropic-api
+base_url: http://localhost:11434/v1   # the local Ollama endpoint
+output_mode: native                   # Ollama structured output (JSON schema)
+```
+
+To reproduce: install [Ollama](https://ollama.com), `ollama pull gemma4:e2b`,
+make sure the daemon listens on `:11434` — that's it, the `ollama` provider
+needs no secrets (cloud providers take their key from env instead; see the
+platform's configuration guide). Provider and model are instance choices —
+the platform ships no default LLM.
+
+Real examples from this run:
 
 | source → OT | method evidence | judge verdict |
 |---|---|---|
