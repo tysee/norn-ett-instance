@@ -1,12 +1,12 @@
 """
 src/norn_ett/clickhouse.py
 
-Подключение к ClickHouse и схема сырых наблюдений raw_ett (идемпотентно).
+ClickHouse connection and raw_ett schema creation (idempotent).
 
-Методы:
-- parse_dsn(dsn) -> dict — разбор строки подключения.
-- get_client(dsn=None) -> Client — клиент из DSN / env NORN_CLICKHOUSE_URL.
-- apply_raw_schema(client) -> None — создаёт raw_ett (ReplacingMergeTree).
+Functions:
+- parse_dsn(dsn) -> dict — parse a connection string.
+- get_client(dsn=None) -> Client — client from DSN / env NORN_CLICKHOUSE_URL.
+- apply_raw_schema(client) -> None — creates raw_ett (ReplacingMergeTree).
 """
 from __future__ import annotations
 

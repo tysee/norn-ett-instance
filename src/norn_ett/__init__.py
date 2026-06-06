@@ -1,9 +1,9 @@
 """
 src/norn_ett/__init__.py
 
-Инстанс norn для ETT (Electricity Transformer Temperature): инжест CSV-датасетов
-ETDataset в ClickHouse + ett-dbt. Самостоятельный репозиторий
-(submodule norn:instances/ett), без рантайм-зависимости от платформы.
+norn instance for ETT (Electricity Transformer Temperature): ingests ETDataset
+CSV datasets into ClickHouse + ett-dbt. Standalone repository
+(submodule norn:instances/ett), with no runtime dependency on the platform.
 """
 
 __version__ = "0.0.0"

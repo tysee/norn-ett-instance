@@ -1,6 +1,6 @@
 # norn-ett pipeline (run on the capable host; TimesFM worker must be up).
 # NOTE: ETT is a static historical dataset — once backfilled it never changes,
-# so this cron is mostly illustrative. It mirrors the crypto pipeline shape so
+# so this cron is mostly illustrative. It mirrors a live-data pipeline shape so
 # the same orchestration applies if the source ever became live.
 # 06:05 ingest, 06:10 build marts, 06:15 forecast + calibrate, 06:20 refresh Lightdash.
 5 6 * * *  cd /path/to/norn-ett-instance && uv run ett update

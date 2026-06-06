@@ -1,9 +1,9 @@
-# Манифест встроенного шедулера norn для ETT-инстанса.
-# Запуск (монтируется КОРЕНЬ инстанса в /jobs):
+# Built-in norn scheduler manifest for the ETT instance.
+# Launch (mount the instance ROOT into /jobs):
 #   NORN_JOBS_DIR=../instances/ett docker compose -f docker-compose.services.yml --profile scheduler up -d scheduler
-# Тогда этот файл доступен как /jobs/deploy/jobs.yml, а форкасты — как
+# This file is then available as /jobs/deploy/jobs.yml, and forecasts as
 # /jobs/forecasts/... (compose command: ["scheduler", "--manifest", "/jobs/deploy/jobs.yml"]).
-# ETT — статичный исторический датасет, расписание иллюстративно (как crontab.sample).
+# ETT is a static historical dataset; the schedule below is illustrative (see crontab.sample).
 jobs:
   - name: ot-timesfm
     action: forecast
@@ -16,8 +16,8 @@ jobs:
   - name: ot-baseline-calibrate
     action: calibrate
     job: /jobs/forecasts/ot_baseline.yml
-    schedule: "50 6 * * *"                   # baseline-калибровка дешёвая (без timesfm-воркера)
+    schedule: "50 6 * * *"                   # baseline calibration is cheap (no timesfm worker required)
   - name: deps-hufl-etth1
     action: deps
     job: /jobs/forecasts/deps/hufl_etth1.yml
-    schedule: "0 5 * * 1"                    # еженедельно: deps дороги (LLM-судья)
+    schedule: "0 5 * * 1"                    # weekly: deps are expensive (LLM judge)
