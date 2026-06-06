@@ -1,0 +1,10 @@
+metric: ot
+source: fct_ot
+grain: hourly
+dimensions: [dataset, feature]
+horizon: 24
+context_length: 512
+seasonality: 24
+model: baseline-seasonal-naive
+transform: none
+schedule: "0 6 * * *"   # ETT is a static historical dataset; schedule is a hint only

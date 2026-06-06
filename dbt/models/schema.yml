@@ -1,0 +1,405 @@
+version: 2
+
+# Lightdash metadata for the ETT (Electricity Transformer Temperature) marts.
+#
+# Conventions used below:
+#   * meta.label          — explore name shown in the Lightdash UI
+#   * meta.dimension.label— human-readable name for a column/dimension
+#   * description          — what the field is, its unit, and how it is computed
+#   * meta.metrics         — named aggregations (this is what charts plot on Y)
+#
+# Note: `label` is only valid INSIDE `meta` (meta.label / meta.dimension.label /
+# meta.metrics.<name>.label), never as a bare model/column property.
+#
+# Charting guidance:
+#   * For oil temperature (the forecast target) use the fct_ot explore — it exposes
+#     one well-typed metric. Prefer it for charts.
+#   * mart_metric is the raw long store mixing ALL 7 channels in one `value` column;
+#     never aggregate it without filtering feature (see its note below).
+#
+# Time intervals: the ETT series are HOURLY, so ts dimensions offer an HOUR grain
+# in addition to the usual DAY/WEEK/MONTH/YEAR roll-ups.
+
+models:
+  - name: mart_metric
+    description: >
+      Raw long-format store: one row per (ts, dataset, feature) with the reading in
+      a single `value` column. feature is one of hufl | hull | mufl | mull | lufl |
+      lull | ot — the six transformer loads (kW) plus the oil temperature (°C), which
+      live on different scales. metric_name is the constant 'reading'. Aggregating
+      `value` across feature is meaningless — always filter to one feature (and one
+      dataset), or use the fct_ot explore instead. Hourly; ETTh1 + ETTh2 only.
+    meta:
+      label: "Metric mart (long)"
+    columns:
+      - name: ts
+        description: "Observation timestamp (UTC), hourly."
+        meta:
+          dimension:
+            label: "Timestamp"
+            type: timestamp
+            time_intervals: ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]
+      - name: dataset
+        description: "ETT dataset, ETTh1 or ETTh2 (the two hourly transformer series)."
+        meta: { dimension: { label: "Dataset", type: string } }
+      - name: feature
+        description: "Which channel this row holds: hufl | hull | mufl | mull | lufl | lull | ot."
+        meta: { dimension: { label: "Feature", type: string } }
+      - name: metric_name
+        description: "Constant 'reading' (norn long-store contract column)."
+        meta: { dimension: { label: "Metric name", type: string } }
+      - name: value
+        description: "Channel value — loads in kW, ot in °C. Filter feature before aggregating."
+        meta:
+          dimension: { label: "Value (raw)", type: number }
+          metrics:
+            avg_value:
+              label: "Avg value (filter feature!)"
+              description: "Mean of value. Only meaningful when filtered to a single feature."
+              type: average
+              round: 4
+            row_count:
+              label: "Row count"
+              description: "Number of rows (= hours × selected features × datasets)."
+              type: count
+      - name: segment_key
+        description: "Canonical segment key, e.g. dataset=ETTh1|feature=ot."
+        meta: { dimension: { label: "Segment", type: string } }
+
+  - name: fct_ot
+    description: "Hourly oil temperature (°C) per dataset — the forecast target (one row per dataset per hour)."
+    meta:
+      label: "Oil temperature"
+    columns:
+      - name: ts
+        description: "Observation hour (UTC)."
+        meta:
+          dimension:
+            label: "Timestamp"
+            type: timestamp
+            time_intervals: ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]
+      - name: dataset
+        description: "ETT dataset, ETTh1 or ETTh2."
+        meta: { dimension: { label: "Dataset", type: string } }
+      - name: feature
+        description: "Channel — always 'ot' in this explore."
+        meta: { dimension: { label: "Feature", type: string } }
+      - name: ot
+        description: "Oil temperature, degrees Celsius."
+        meta:
+          dimension: { label: "Oil temp", type: number, round: 2 }
+          metrics:
+            avg_ot:
+              label: "Avg oil temp"
+              description: "Average oil temperature over the period (°C)."
+              type: average
+              round: 2
+            max_ot:
+              label: "Max oil temp"
+              description: "Highest oil temperature in the period (°C)."
+              type: max
+              round: 2
+            min_ot:
+              label: "Min oil temp"
+              description: "Lowest oil temperature in the period (°C)."
+              type: min
+              round: 2
+            n_hours:
+              label: "Hours"
+              description: "Number of hourly observations (data coverage)."
+              type: count
+      - name: segment_key
+        description: "Canonical segment key, e.g. dataset=ETTh1|feature=ot."
+        meta: { dimension: { label: "Segment", type: string } }
+
+  - name: actual_vs_forecast
+    description: >
+      One continuous series per segment that overlays realized oil temperature with
+      the model forecast. Historical rows carry the actual ot (y_actual); forecast
+      rows carry the point forecast (y_hat) and its 80% interval (p10..p90). Use it
+      for "oil temp so far + forecast ahead" charts. Filter segment_key to one
+      dataset.
+    meta:
+      label: "Actual vs forecast"
+    columns:
+      - name: ts
+        description: "Hour of the actual observation or forecast horizon step (UTC)."
+        meta:
+          dimension:
+            label: "Timestamp"
+            type: timestamp
+            time_intervals: ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]
+      - name: metric_name
+        description: "Forecasted metric (currently always 'ot')."
+        meta: { dimension: { label: "Metric name", type: string } }
+      - name: segment_key
+        description: "Canonical segment key, e.g. dataset=ETTh1|feature=ot — filter to ONE segment per chart."
+        meta: { dimension: { label: "Segment", type: string } }
+      - name: y_actual
+        description: "Realized oil temperature (°C); NULL for future forecast hours."
+        meta:
+          dimension: { label: "Actual oil temp", type: number, round: 2 }
+          metrics:
+            avg_y_actual:
+              label: "Actual oil temp"
+              description: "Realized oil temperature (°C)."
+              type: average
+              round: 2
+      - name: y_hat
+        description: "Point forecast of oil temp (median, °C); NULL for historical hours."
+        meta:
+          dimension: { label: "Forecast", type: number, round: 2 }
+          metrics:
+            avg_y_hat:
+              label: "Forecast (median)"
+              description: "Point forecast of oil temperature (°C)."
+              type: average
+              round: 2
+      - name: p10
+        description: "10th-percentile forecast — lower edge of the 80% interval (°C)."
+        meta:
+          dimension: { label: "Forecast low (p10)", type: number, round: 2 }
+          metrics:
+            avg_p10:
+              label: "Forecast low (p10)"
+              description: "Lower edge of the 80% forecast interval (°C)."
+              type: average
+              round: 2
+      - name: p90
+        description: "90th-percentile forecast — upper edge of the 80% interval (°C)."
+        meta:
+          dimension: { label: "Forecast high (p90)", type: number, round: 2 }
+          metrics:
+            avg_p90:
+              label: "Forecast high (p90)"
+              description: "Upper edge of the 80% forecast interval (°C)."
+              type: average
+              round: 2
+      - name: error_abs
+        description: "|y_actual − y_hat| where both exist (backtest only); NULL for pure-future forecasts (°C)."
+        meta:
+          dimension: { label: "Absolute error", type: number, round: 2 }
+          metrics:
+            avg_error_abs:
+              label: "MAE (avg abs error)"
+              description: "Mean absolute forecast error over rows with a realized value (°C)."
+              type: average
+              round: 2
+            max_error_abs:
+              label: "Max abs error"
+              description: "Largest absolute forecast error (°C)."
+              type: max
+              round: 2
+
+  - name: calibration
+    description: >
+      Rolling-origin backtest quality per segment — the latest calibration run of
+      EACH model family (baseline / timesfm / timesfm+xreg), comparable side-by-side.
+      coverage_pct = share of actuals inside the 80% p10–p90 interval (target ≈ 80;
+      >80 = interval too wide, <80 = too narrow). mape_pct/wape_pct = point error.
+      bias = mean(forecast − actual).
+    meta:
+      label: "Backtest quality"
+    columns:
+      - name: model_name
+        description: "Backtested model family, e.g. 'timesfm-2.5+xreg (backtest)'."
+        meta: { dimension: { label: "Model", type: string } }
+      - name: segment_key
+        description: "Canonical segment key, e.g. dataset=ETTh1|feature=ot."
+        meta: { dimension: { label: "Segment", type: string } }
+      - name: metric_name
+        description: "Backtested metric (currently 'ot')."
+        meta: { dimension: { label: "Metric name", type: string } }
+      - name: n_points
+        description: "Number of (actual, forecast) hold-out pairs evaluated."
+        meta:
+          dimension: { label: "Hold-out points", type: number }
+          metrics:
+            sum_points: { label: "Hold-out points", description: "Total evaluated pairs.", type: sum }
+      - name: is_sparse
+        description: "Whether the segment had too few points for a reliable backtest (1 = sparse)."
+        meta: { dimension: { label: "Sparse segment", type: boolean } }
+      - name: coverage_pct
+        description: "Share of actuals inside the 80% interval (target ≈ 80%)."
+        meta:
+          dimension: { label: "Coverage % (target 80)", type: number, round: 1 }
+          metrics:
+            avg_coverage:
+              label: "Coverage % (target 80)"
+              description: "80% interval coverage; >80 = too wide, <80 = too narrow."
+              type: average
+              round: 1
+      - name: mape_pct
+        description: "Mean absolute percentage error of the point forecast."
+        meta:
+          dimension: { label: "MAPE %", type: number, round: 2 }
+          metrics:
+            avg_mape:
+              label: "MAPE %"
+              description: "Mean absolute percentage error (lower = better)."
+              type: average
+              round: 2
+      - name: wape_pct
+        description: "Weighted absolute percentage error (Σ|err| / Σ|actual|)."
+        meta:
+          dimension: { label: "WAPE %", type: number, round: 2 }
+          metrics:
+            avg_wape:
+              label: "WAPE %"
+              description: "Weighted absolute percentage error (lower = better)."
+              type: average
+              round: 2
+      - name: bias
+        description: "Mean(forecast − actual); <0 = forecasts run low."
+        meta:
+          dimension: { label: "Bias", type: number, round: 4 }
+          metrics:
+            avg_bias:
+              label: "Bias (fc − actual)"
+              description: "Systematic over/under-forecast; <0 = predicts low."
+              type: average
+              round: 4
+
+  - name: backtest_point
+    description: >
+      Per-point rolling-origin backtest (latest calibration run): at each past hour,
+      the model's forecast (y_hat + p10/p90 band) alongside the realized actual.
+      Filter segment_key to ONE segment per chart. Source for "past forecast vs actual".
+    meta:
+      label: "Past forecast vs actual"
+    columns:
+      - name: ts
+        description: "Historical hour that was forecasted in the backtest (UTC)."
+        meta:
+          dimension:
+            label: "Timestamp"
+            type: timestamp
+            time_intervals: ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]
+      - name: segment_key
+        description: "Canonical segment key, e.g. dataset=ETTh1|feature=ot — filter to ONE segment."
+        meta: { dimension: { label: "Segment", type: string } }
+      - name: horizon_step
+        description: "Steps ahead from the backtest origin (1..horizon)."
+        meta: { dimension: { label: "Horizon step", type: number } }
+      - name: y_actual
+        description: "Realized oil temperature at that hour (°C)."
+        meta:
+          dimension: { label: "Actual oil temp", type: number, round: 2 }
+          metrics:
+            avg_y_actual: { label: "Actual oil temp", description: "Realized oil temperature (°C).", type: average, round: 2 }
+      - name: y_hat
+        description: "Backtested point forecast for that hour (°C)."
+        meta:
+          dimension: { label: "Past forecast", type: number, round: 2 }
+          metrics:
+            avg_y_hat: { label: "Past forecast", description: "Backtested forecast (°C).", type: average, round: 2 }
+      - name: p10
+        description: "Lower edge of the 80% backtest interval (°C)."
+        meta:
+          dimension: { label: "Forecast low (p10)", type: number, round: 2 }
+          metrics:
+            avg_p10: { label: "Forecast low (p10)", description: "Lower 80% edge (°C).", type: average, round: 2 }
+      - name: p90
+        description: "Upper edge of the 80% backtest interval (°C)."
+        meta:
+          dimension: { label: "Forecast high (p90)", type: number, round: 2 }
+          metrics:
+            avg_p90: { label: "Forecast high (p90)", description: "Upper 80% edge (°C).", type: average, round: 2 }
+      - name: error_abs
+        description: "Absolute backtest error |actual − forecast| (°C)."
+        meta:
+          dimension: { label: "Absolute error", type: number, round: 2 }
+          metrics:
+            avg_error_abs: { label: "MAE", description: "Mean absolute backtest error (°C).", type: average, round: 2 }
+      - name: ape_pct
+        description: "Absolute percentage error 100·|actual−forecast|/actual; avg over a horizon step = MAPE."
+        meta:
+          dimension: { label: "APE %", type: number, round: 2 }
+          metrics:
+            avg_ape: { label: "MAPE %", description: "Mean absolute percentage error (group by horizon step to see skill decay).", type: average, round: 2 }
+
+  - name: feature_leads
+    description: >
+      Feature-selection evidence: the latest LLM verdict for each (source feature →
+      OT) pair, joined with the numeric method evidence it was judged on — lagged
+      cross-correlation (xcorr_score/xcorr_lag) and Granger causality (granger_p/
+      granger_lag). One row per explanation. The confirmed XReg covariates that
+      ot_timesfm_xreg auto-attaches are the rows where is_real = 1 AND
+      direction = 'source_leads'. Use the table chart to audit which channels lead
+      oil temperature and why.
+    meta:
+      label: "Feature leads (deps)"
+    columns:
+      - name: source_segment
+        description: "Candidate driver segment, e.g. dataset=ETTh1|feature=hufl — the feature tested as a lead of OT."
+        meta: { dimension: { label: "Source segment", type: string } }
+      - name: target_segment
+        description: "Forecast target segment, e.g. dataset=ETTh1|feature=ot (always an OT segment)."
+        meta: { dimension: { label: "Target segment", type: string } }
+      - name: lag
+        description: "Lead/lag in hours from the LLM verdict (positive = source leads target by that many hours)."
+        meta: { dimension: { label: "Lag (hours)", type: number } }
+      - name: direction
+        description: "Verdict relationship: source_leads | target_leads | bidirectional | none."
+        meta: { dimension: { label: "Direction", type: string } }
+      - name: is_real
+        description: "Whether the LLM judged the lead genuine (1) vs spurious (0). is_real=1 + source_leads = confirmed covariate."
+        meta:
+          dimension: { label: "Is real", type: boolean }
+          metrics:
+            confirmed_leads:
+              label: "Confirmed leads"
+              description: "Count of confirmed real leads (sum of is_real over the selected rows)."
+              type: sum
+      - name: confidence
+        description: "LLM confidence in the verdict, 0..1."
+        meta:
+          dimension: { label: "Confidence", type: number, round: 3 }
+          metrics:
+            avg_confidence:
+              label: "Avg confidence"
+              description: "Mean LLM confidence across the selected verdicts (0..1)."
+              type: average
+              round: 3
+      - name: explanation
+        description: "LLM's natural-language justification for the verdict."
+        meta: { dimension: { label: "Explanation", type: string } }
+      - name: caveats
+        description: "LLM-noted caveats / limitations of the verdict."
+        meta: { dimension: { label: "Caveats", type: string } }
+      - name: llm_model
+        description: "Model that produced the verdict."
+        meta: { dimension: { label: "LLM model", type: string } }
+      - name: created_at
+        description: "When the verdict row was written (UTC)."
+        meta:
+          dimension:
+            label: "Created at"
+            type: timestamp
+            time_intervals: ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]
+      - name: xcorr_score
+        description: "Peak lagged cross-correlation between source and target (−1..1); evidence the verdict was judged on."
+        meta:
+          dimension: { label: "Xcorr score", type: number, round: 4 }
+          metrics:
+            avg_xcorr_score:
+              label: "Avg xcorr score"
+              description: "Mean peak lagged cross-correlation across selected rows."
+              type: average
+              round: 4
+      - name: xcorr_lag
+        description: "Lag (hours) at which the cross-correlation peaks."
+        meta: { dimension: { label: "Xcorr lag (hours)", type: number } }
+      - name: granger_p
+        description: "Granger-causality p-value (lower = stronger evidence source Granger-causes target)."
+        meta:
+          dimension: { label: "Granger p-value", type: number, round: 4 }
+          metrics:
+            avg_granger_p:
+              label: "Avg Granger p-value"
+              description: "Mean Granger p-value across selected rows (lower = stronger)."
+              type: average
+              round: 4
+      - name: granger_lag
+        description: "Lag (hours) used by the Granger test."
+        meta: { dimension: { label: "Granger lag (hours)", type: number } }

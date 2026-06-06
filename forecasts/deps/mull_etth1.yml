@@ -1,0 +1,6 @@
+# MULL load feature -> oil temperature (OT) lead/lag candidate (ETTh1)
+source_segment: dataset=ETTh1|feature=mull
+target_segment: dataset=ETTh1|feature=ot
+metric: reading
+mart: mart_metric
+max_lag: 48
