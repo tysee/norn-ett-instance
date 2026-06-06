@@ -61,8 +61,15 @@ its README states **CC BY 4.0** — a discrepancy in the source worth flagging.
 ```
 uv sync
 uv run ett backfill           # 4 ETT CSVs -> raw_ett (174 200 rows)
-CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profiles-dir dbt
+# build the forecast-input marts (mart_metric, fct_ot) — these read only raw_ett:
+CH_HOST=localhost uv run --with dbt-clickhouse dbt run --select mart_metric fct_ot --project-dir dbt --profiles-dir dbt
 ```
+
+> The full `dbt run` (no `--select`) also builds the reporting views
+> (`actual_vs_forecast`, `calibration`, `backtest_point`, `feature_leads`),
+> which read the platform **contract tables** — so on a fresh database run
+> `norn schema-apply` first (step 3 below) and then the full `dbt run`. The
+> marts above are all you need to start forecasting.
 
 ## The pipeline, step by step
 
@@ -78,7 +85,11 @@ from norn's `deploy/`, HF weights cached in a named volume, optional
 
 ### 2. Model the marts (dbt)
 
-`dbt run` builds, among others:
+Build the forecast-input marts (they read only `raw_ett`):
+
+```
+CH_HOST=localhost uv run --with dbt-clickhouse dbt run --select mart_metric fct_ot --project-dir dbt --profiles-dir dbt
+```
 
 - **`mart_metric`** — the platform's long contract shape
   `(ts, metric_name, value, segment_key)`: every hourly column of
@@ -87,6 +98,13 @@ from norn's `deploy/`, HF weights cached in a named volume, optional
   generic table, 14 segments, no platform schema changes.
 - **`fct_ot`** — a narrow view of the forecast target only (34 840 rows:
   2 datasets × 17 420 hours), consumed by the forecast jobs.
+
+The other four dbt models (`actual_vs_forecast`, `calibration`,
+`backtest_point`, `feature_leads`) read the platform contract tables and so
+only build **after** `norn schema-apply` (next step) has created them — a plain
+full `dbt run` on a fresh database fails on those until then. Re-run the full
+`dbt run` once the contract tables exist (e.g. after step 3) to materialize the
+reporting views.
 
 ### 3. Baseline forecast
 
