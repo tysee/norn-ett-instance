@@ -60,7 +60,7 @@ its README states **CC BY 4.0** — a discrepancy in the source worth flagging.
 
 ```
 uv sync
-uv run ett backfill           # 4 ETT CSVs -> raw_ett (191 622 rows)
+uv run ett backfill           # 4 ETT CSVs -> raw_ett (174 200 rows)
 CH_HOST=localhost uv run --with dbt-clickhouse dbt run --project-dir dbt --profiles-dir dbt
 ```
 
@@ -74,7 +74,7 @@ from norn's `deploy/`, HF weights cached in a named volume, optional
 
 ### 1. Ingest
 
-`uv run ett backfill` → `raw_ett` (191 622 rows across the 4 datasets).
+`uv run ett backfill` → `raw_ett` (174 200 rows across the 4 datasets).
 
 ### 2. Model the marts (dbt)
 
