@@ -24,6 +24,13 @@ cache in a named volume; set `HF_TOKEN` in `deploy/.env` for faster downloads).
 6. `uv run norn calibrate .../forecasts/ot_timesfm.yml` → `forecast_segment`.
 7. MCP `get_forecast(metric="ot", segment="dataset=ETTh1|feature=ot")` returns rows; Lightdash shows actual-vs-forecast.
 
+The result in Lightdash — two weeks of actual oil temperature, then the forecast
+median with the p10–p90 band (the actual line ends at the forecast boundary):
+
+![OT actual vs forecast — ETTh1](docs/assets/ot-actual-vs-forecast-etth1.png)
+
+![OT actual vs forecast — ETTh2](docs/assets/ot-actual-vs-forecast-etth2.png)
+
 If the TimesFM worker is unreachable, the `timesfm-2.5` jobs **fail explicitly** (they record a
 `forecast_run` row with `status=failed` and raise a clear error — there is no silent fallback).
 To forecast without the worker, run `forecasts/ot_baseline.yml` (`model: baseline-seasonal-naive`),
